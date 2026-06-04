@@ -1,0 +1,659 @@
+    <!DOCTYPE html>
+    <html lang="pl">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Interaktywna Mapa GTA V</title>
+        
+        <!-- Import biblioteki Leaflet (CSS) -->
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        
+        <style>
+            :root {
+                --gta-green: #37ef55;
+                --gta-green-hover: #2bc743;
+                --gta-dark: #121314;
+                --gta-panel: #1a1c1e;
+                --gta-text: #ffffff;
+                --gta-border: #2d3135;
+            }
+
+            body, html {
+                margin: 0;
+                padding: 0;
+                width: 100vw;
+                height: 100vh;
+                font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                background-color: var(--gta-dark);
+                color: var(--gta-text);
+                overflow: hidden;
+            }
+
+            #app-container {
+                display: flex;
+                width: 100vw;
+                height: 100vh;
+                position: relative;
+            }
+
+            #fallback-loader {
+                position: absolute;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background-color: var(--gta-dark);
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                z-index: 9999;
+                text-align: center;
+                padding: 20px;
+                box-sizing: border-box;
+            }
+
+            /* Panel boczny */
+            #sidebar {
+                width: 340px;
+                height: 100%;
+                background-color: var(--gta-panel);
+                border-right: 3px solid var(--gta-green);
+                display: flex;
+                flex-direction: column;
+                z-index: 1000;
+                box-shadow: 5px 0 25px rgba(0,0,0,0.6);
+            }
+
+            .sidebar-header {
+                padding: 20px;
+                background: linear-gradient(135deg, #1f2226, #121314);
+                border-bottom: 1px solid var(--gta-border);
+                text-align: center;
+            }
+
+            .sidebar-header h1 {
+                margin: 0;
+                font-size: 24px;
+                text-transform: uppercase;
+                letter-spacing: 3px;
+                color: var(--gta-green);
+                text-shadow: 0 0 12px rgba(55, 239, 85, 0.4);
+            }
+
+            /* Panel wyboru trybu */
+            .toolbar {
+                padding: 15px 20px;
+                background: #151618;
+                border-bottom: 1px solid var(--gta-border);
+                display: flex;
+                gap: 10px;
+            }
+
+            .tool-btn {
+                flex: 1;
+                background: #25282c;
+                border: 1px solid var(--gta-border);
+                color: #888;
+                padding: 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+                font-size: 12px;
+                text-transform: uppercase;
+                transition: all 0.2s ease;
+            }
+
+            .tool-btn.active {
+                border-color: var(--gta-green);
+                color: var(--gta-green);
+                background: rgba(55, 239, 85, 0.05);
+                box-shadow: 0 0 10px rgba(55, 239, 85, 0.2);
+            }
+
+            .tool-btn:hover:not(.active) {
+                color: #fff;
+                background: #2d3136;
+            }
+
+            .action-btn {
+                width: 100%;
+                background: var(--gta-green);
+                color: #000;
+                border: none;
+                padding: 8px;
+                margin-top: 8px;
+                border-radius: 4px;
+                font-weight: bold;
+                cursor: pointer;
+                text-transform: uppercase;
+                font-size: 11px;
+                display: none;
+            }
+
+            .action-btn:hover {
+                background: var(--gta-green-hover);
+            }
+
+            .sidebar-content {
+                padding: 20px;
+                flex-grow: 1;
+                overflow-y: auto;
+            }
+
+            .instruction-box {
+                background: rgba(255, 255, 255, 0.02);
+                padding: 12px;
+                border-radius: 6px;
+                border-left: 4px solid var(--gta-green);
+                margin-bottom: 20px;
+                font-size: 12px;
+                line-height: 1.5;
+                color: #bbb;
+            }
+
+            .section-title {
+                margin-top: 15px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                color: #666;
+                border-bottom: 1px solid var(--gta-border);
+                padding-bottom: 6px;
+                margin-bottom: 12px;
+            }
+
+            /* Listy elementów */
+            .item-list {
+                list-style: none;
+                padding: 0;
+                margin: 0 0 20px 0;
+            }
+
+            .list-item {
+                background: rgba(255, 255, 255, 0.02);
+                padding: 10px 12px;
+                margin-bottom: 8px;
+                border-radius: 6px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border: 1px solid transparent;
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+
+            .list-item:hover {
+                border-color: var(--gta-green);
+                background: rgba(55, 239, 85, 0.03);
+            }
+
+            .item-info {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+
+            .item-name {
+                font-size: 13px;
+                font-weight: 600;
+            }
+
+            .item-sub {
+                font-size: 11px;
+                color: #555;
+            }
+
+            .delete-btn {
+                background: none;
+                border: none;
+                color: #ff4d4d;
+                cursor: pointer;
+                font-size: 18px;
+                padding: 0 4px;
+            }
+
+            .delete-btn:hover {
+                color: #ff1a1a;
+            }
+
+            /* Mapa */
+            #map-container {
+                flex-grow: 1;
+                height: 100%;
+                position: relative;
+            }
+
+            #map {
+                width: 100%;
+                height: 100%;
+                background-color: #0d1e27;
+            }
+
+            /* Nadpisanie popupów */
+            .leaflet-popup-content-wrapper {
+                background: var(--gta-panel) !important;
+                color: var(--gta-text) !important;
+                border: 1px solid var(--gta-green);
+                border-radius: 6px;
+            }
+
+            .leaflet-popup-tip {
+                background: var(--gta-panel) !important;
+                border-left: 1px solid var(--gta-green);
+                border-bottom: 1px solid var(--gta-green);
+            }
+        </style>
+    </head>
+    <body>
+
+    <style>
+    #password-overlay{
+    position:fixed;inset:0;background:#121314;z-index:999999;
+    display:flex;align-items:center;justify-content:center;
+    }
+    #password-box{
+    background:#1a1c1e;padding:30px;border:2px solid #37ef55;
+    border-radius:10px;text-align:center;color:white;min-width:320px;
+    }
+    #password-box input{
+    width:100%;padding:10px;margin:10px 0;box-sizing:border-box;
+    }
+    #password-box button{
+    padding:10px 15px;cursor:pointer;
+    }
+    </style>
+
+    <div id="password-overlay">
+    <div id="password-box">
+        <h2>Dostęp chroniony</h2>
+        <p>Wpisz hasło aby wejść na stronę</p>
+        <input type="password" id="site-password" placeholder="Hasło">
+        <button onclick="checkPassword()">Wejdź</button>
+        <p id="password-error" style="color:red;"></p>
+    </div>
+    </div>
+
+    <script>
+    const REQUIRED_PASSWORD = "LSPDTOPKA12";
+
+    function checkPassword(){
+    const entered = document.getElementById('site-password').value;
+    if(entered === REQUIRED_PASSWORD){
+        document.getElementById('password-overlay').style.display = 'none';
+    } else {
+        document.getElementById('password-error').textContent = 'Nieprawidłowe hasło';
+    }
+    }
+    </script>
+
+
+    <div id="fallback-loader">
+        <h2 style="color: var(--gta-green); margin-bottom: 10px;">Inicjalizacja GPS Los Santos...</h2>
+        <p style="color: #aaa; max-width: 500px; font-size: 14px;">Wymagane połączenie z siecią do pobrania tekstur mapy.</p>
+    </div>
+
+    <div id="app-container">
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <h1>GPS Los Santos</h1>
+            </div>
+            
+            <div class="toolbar">
+                <button id="btn-mode-pin" class="tool-btn active" onclick="setMode('pin')">📍 Pinezki</button>
+                <button id="btn-mode-line" class="tool-btn" onclick="setMode('line')">🟢 Linie</button>
+            </div>
+
+            <div class="sidebar-content">
+                <div id="instructions" class="instruction-box">
+                    <strong>Tryb Pinezek:</strong><br>Kliknij w dowolnym miejscu na mapie, aby postawić znacznik.
+                </div>
+                <button id="btn-finish-line" class="action-btn" onclick="finishCurrentLine()">Zakończ obecną linię</button>
+                
+                <div class="section-title">Zapisane Lokalizacje</div>
+                <ul id="pins-list" class="item-list"></ul>
+
+                <div class="section-title">Narysowane Trasy</div>
+                <ul id="lines-list" class="item-list"></ul>
+            </div>
+        </div>
+
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        if (typeof L !== 'undefined') {
+            // Natychmiastowe ukrycie ekranu ładowania, bo Leaflet się pobrał
+            document.getElementById('fallback-loader').style.display = 'none';
+
+            const map = L.map('map', {
+                crs: L.CRS.Simple,
+                minZoom: -3,
+                maxZoom: 1,
+                zoomControl: true
+            });
+
+            const mapWidth = 8192;
+            const mapHeight = 8192;
+            const bounds = [[0, 0], [mapHeight, mapWidth]];
+            const mapImageUrl = 'https://www.bragitoff.com/wp-content/uploads/2015/11/GTAV-HD-MAP-satellite.jpg';
+
+            L.imageOverlay(mapImageUrl, bounds).addTo(map);
+            map.fitBounds(bounds);
+            map.setView([mapHeight / 2, mapWidth / 2], -2);
+
+            // Stan aplikacji
+            let currentMode = 'pin';
+            let customMarkers = [];
+            let allLines = [];
+            let activeLineData = null;
+            let db = null;
+
+    window.addEventListener("load", () => {
+        if (window.firebaseDB) {
+            db = window.firebaseDB;
+
+            onValue(ref(db, "pins"), (snapshot) => {
+
+                customMarkers.forEach(m => {
+                    map.removeLayer(m.markerInstance);
+                });
+
+                customMarkers = [];
+
+                const data = snapshot.val();
+
+                if (!data) {
+                    updatePinsSidebar();
+                    return;
+                }
+
+                Object.keys(data).forEach(id => {
+
+                    const pin = data[id];
+
+                    const marker = L.marker([
+                        pin.lat,
+                        pin.lng
+                    ]).addTo(map);
+
+                    marker.bindPopup(`<b>${pin.name}</b>`);
+
+                    customMarkers.push({
+                        id,
+                        markerInstance: marker,
+                        name: pin.name,
+                        latlng: {
+                            lat: pin.lat,
+                            lng: pin.lng
+                        }
+                    });
+                });
+
+                updatePinsSidebar();
+            });
+        }
+    });
+
+            // BEZPIECZNY ZAPIS (try-catch chroni przed blokadą file://)
+            function saveToLocalStorage() {
+                try {
+                    const pinsData = customMarkers.map(m => ({
+                        id: m.id,
+                        name: m.name,
+                        latlng: m.latlng
+                    }));
+                    const linesData = allLines.map(l => ({
+                        id: l.id,
+                        name: l.name,
+                        coords: l.coords
+                    }));
+
+                    localStorage.setItem('gta_map_pins', JSON.stringify(pinsData));
+                    localStorage.setItem('gta_map_lines', JSON.stringify(linesData));
+                } catch (e) {
+                    console.warn("Zapis zablokowany przez przeglądarkę (file://). Punkty znikną po odświeżeniu, dopóki nie wrzucisz strony na serwer.");
+                }
+            }
+
+            // BEZPIECZNY ODCZYT
+            function loadFromLocalStorage() {
+                let savedPins = null;
+                let savedLines = null;
+
+                try {
+                    savedPins = localStorage.getItem('gta_map_pins');
+                    savedLines = localStorage.getItem('gta_map_lines');
+                } catch (e) {
+                    console.warn("Odczyt zablokowany przez przeglądarkę (file://). Ładowanie punktów domyślnych.");
+                }
+
+                // Jeśli baza jest pusta lub zablokowana, ładujemy punkty startowe
+                if (!savedPins && !savedLines) {
+                    addMarker(L.latLng(3620, 3180), "Dom Michaela (Rockford Hills)");
+                    addMarker(L.latLng(6850, 4420), "Szczyt Mount Chiliad");
+                    return;
+                }
+
+                if (savedPins) {
+                    try {
+                        const pins = JSON.parse(savedPins);
+                        pins.forEach(p => {
+                            addMarker(L.latLng(p.latlng.lat, p.latlng.lng), p.name, p.id);
+                        });
+                    } catch(err) {}
+                }
+
+                if (savedLines) {
+                    try {
+                        const lines = JSON.parse(savedLines);
+                        lines.forEach(l => {
+                            const polylineInstance = L.polyline(l.coords, {
+                                color: '#37ef55',
+                                weight: 4,
+                                opacity: 0.85,
+                                lineJoin: 'round'
+                            }).addTo(map);
+
+                            polylineInstance.bindPopup(`<b>Trasa: ${l.name}</b>`);
+
+                            allLines.push({
+                                id: l.id,
+                                name: l.name,
+                                instance: polylineInstance,
+                                coords: l.coords
+                            });
+                        });
+                        updateLinesSidebar();
+                    } catch(err) {}
+                }
+            }
+
+            // Zmiana trybu pracy
+            window.setMode = function(mode) {
+                currentMode = mode;
+                document.getElementById('btn-mode-pin').classList.toggle('active', mode === 'pin');
+                document.getElementById('btn-mode-line').classList.toggle('active', mode === 'line');
+                
+                const instr = document.getElementById('instructions');
+                const finishBtn = document.getElementById('btn-finish-line');
+                
+                if (mode === 'pin') {
+                    instr.innerHTML = `<strong>Tryb Pinezek:</strong><br>Kliknij w dowolnym miejscu na mapie, aby postawić znacznik.`;
+                    finishBtn.style.display = 'none';
+                    finishCurrentLine();
+                } else {
+                    instr.innerHTML = `<strong>Tryb Rysowania:</strong><br>Klikaj na mapie, aby dodawać kolejne punkty trasy. Gdy skończysz, kliknij przycisk poniżej.`;
+                    finishBtn.style.display = 'block';
+                }
+            }
+
+            // Obsługa kliknięć
+            map.on('click', function(e) {
+                if (currentMode === 'pin') {
+                    const pinName = prompt("Wprowadź nazwę dla tego punktu:");
+                    if (pinName && pinName.trim() !== "") {
+                        addMarker(e.latlng, pinName.trim());
+                    }
+                } else if (currentMode === 'line') {
+                    if (!activeLineData) {
+                        const lineName = prompt("Wprowadź nazwę nowej trasy/strefy:", `Trasa #${allLines.length + 1}`);
+                        if (!lineName || lineName.trim() === "") return;
+
+                        const lineId = Date.now();
+                        const polylineInstance = L.polyline([e.latlng], {
+                            color: '#37ef55',
+                            weight: 4,
+                            opacity: 0.85,
+                            lineJoin: 'round'
+                        }).addTo(map);
+
+                        activeLineData = {
+                            id: lineId,
+                            name: lineName.trim(),
+                            instance: polylineInstance,
+                            coords: [e.latlng]
+                        };
+
+                        allLines.push(activeLineData);
+                        updateLinesSidebar();
+                        saveToLocalStorage();
+                    } else {
+                        activeLineData.coords.push(e.latlng);
+                        activeLineData.instance.setLatLngs(activeLineData.coords);
+                        updateLinesSidebar();
+                        saveToLocalStorage();
+                    }
+                }
+            });
+
+            window.finishCurrentLine = function() {
+                if (activeLineData) {
+                    activeLineData.instance.bindPopup(`<b>Trasa: ${activeLineData.name}</b>`);
+                    activeLineData = null;
+                    saveToLocalStorage();
+                    alert("Zapisano trasę!");
+                }
+            }
+
+            // OBSŁUGA PINEZEK
+            function addMarker(latlng, name) {
+
+        if (db) {
+
+            const newPinRef = push(ref(db, "pins"));
+
+            set(newPinRef, {
+                name: name,
+                lat: latlng.lat,
+                lng: latlng.lng
+            });
+
+            return;
+        }
+
+    }
+
+            function updatePinsSidebar() {
+                const container = document.getElementById('pins-list');
+                container.innerHTML = '';
+                customMarkers.forEach(m => {
+                    const li = document.createElement('li');
+                    li.className = 'list-item';
+                    li.setAttribute('onclick', `focusOnMarker('${m.id}')`);
+                    li.innerHTML = `
+                        <div class="item-info">
+                            <span class="item-name">📍 ${m.name}</span>
+                            <span class="item-sub">X: ${Math.round(m.latlng.lng)}, Y: ${Math.round(m.latlng.lat)}</span>
+                        </div>
+                        <button class="delete-btn" onclick="removeMarker('${m.id}'); event.stopPropagation();">&times;</button>
+                    `;
+                    container.appendChild(li);
+                });
+            }
+
+            window.focusOnMarker = function(id) {
+                const m = customMarkers.find(item => item.id === id);
+                if (m) {
+                    map.setView(m.latlng, 0);
+                    m.markerInstance.openPopup();
+                }
+            };
+
+            window.removeMarker = function(id) {
+
+        if (db) {
+            remove(ref(db, "pins/" + id));
+        }
+
+    };
+
+            // OBSŁUGA LINII
+            function updateLinesSidebar() {
+                const container = document.getElementById('lines-list');
+                container.innerHTML = '';
+                allLines.forEach(l => {
+                    const li = document.createElement('li');
+                    li.className = 'list-item';
+                    li.setAttribute('onclick', `focusOnLine(${l.id})`);
+                    li.innerHTML = `
+                        <div class="item-info">
+                            <span class="item-name">📈 ${l.name}</span>
+                            <span class="item-sub">Punkty: ${l.coords.length}</span>
+                        </div>
+                        <button class="delete-btn" onclick="removeLine(${l.id}); event.stopPropagation();">&times;</button>
+                    `;
+                    container.appendChild(li);
+                });
+            }
+
+            window.focusOnLine = function(id) {
+                const l = allLines.find(item => item.id === id);
+                if (l && l.coords.length > 0) {
+                    map.setView(l.coords[0], -1);
+                    l.instance.openPopup(l.coords[Math.floor(l.coords.length / 2)]);
+                }
+            };
+
+            window.removeLine = function(id) {
+                const index = allLines.findIndex(item => item.id === id);
+                if (index !== -1) {
+                    if (activeLineData && activeLineData.id === id) {
+                        activeLineData = null;
+                    }
+                    map.removeLayer(allLines[index].instance);
+                    allLines.splice(index, 1);
+                    updateLinesSidebar();
+                    saveToLocalStorage();
+                }
+            };
+
+            // Bezpieczne ładowanie danych
+        
+        }
+    </script>
+
+
+
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, push, set, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+    apiKey: "AIzaSyAX27Zh51mEX9lEaNt4u4xCi4u7upKYOAM",
+    authDomain: "mapa-d1dd7.firebaseapp.com",
+    databaseURL: "https://mapa-d1dd7-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "mapa-d1dd7",
+    storageBucket: "mapa-d1dd7.firebasestorage.app",
+    messagingSenderId: "684760101824",
+    appId: "1:684760101824:web:889ff1145bb8aec5fa4e25"
+    };
+
+    window.firebaseApp = initializeApp(firebaseConfig);
+    window.firebaseDB = getDatabase(window.firebaseApp);
+    window.ref = ref;
+    window.push = push;
+    window.set = set;
+    window.remove = remove;
+    window.onValue = onValue;
+    </script>
