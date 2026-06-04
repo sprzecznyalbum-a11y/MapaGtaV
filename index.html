@@ -244,15 +244,17 @@
                 position:absolute;
                 top:15px;
                 right:15px;
-                background:rgba(0,0,0,.65);
-                backdrop-filter:blur(10px);
-                border:1px solid rgba(55,239,85,.3);
-                border-radius:10px;
-                padding:12px 16px;
+                background:linear-gradient(135deg,#111,#222);
+                border:2px solid #e0e0e0;
+                border-radius:14px;
+                padding:14px 18px;
                 z-index:1000;
-                color:white;
-                font-size:12px;
-                min-width:180px;
+                color:#ffffff;
+                font-size:13px;
+                min-width:200px;
+                box-shadow:0 0 20px rgba(255,255,255,.15);
+                font-weight:600;
+                letter-spacing:.5px;
             }
 
             /* Nadpisanie popupów */
@@ -351,7 +353,7 @@
         </div>
 
         <div id="map-container">
-            <div id="map"></div><div id="hud"><div>🛰️ GPS ONLINE</div><div id="coords">X: 0 Y: 0</div></div>
+            <div id="map"></div><div id="hud"><div>⚪ GPS ONLINE</div><hr style="border-color:#555"><div id="coords">X: 0 | Y: 0</div></div>
         </div>
     </div>
 
@@ -365,7 +367,11 @@
                 crs: L.CRS.Simple,
                 minZoom: -3,
                 maxZoom: 1,
-                zoomControl: true
+                zoomControl: true,
+                zoomAnimation: false,
+                fadeAnimation: false,
+                markerZoomAnimation: false,
+                preferCanvas: true
             });
 
             const mapWidth = 8192;
