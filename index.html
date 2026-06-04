@@ -648,14 +648,21 @@ window.updatePinsSidebar = function updatePinsSidebar() {
         li.onclick = () => focusOnMarker(m.id);
 
         li.addEventListener('dragstart', (e) => {
+            if(window.userRole !== 'admin'){
+                e.preventDefault();
+                return;
+            }
             e.dataTransfer.setData('text/plain', index);
         });
 
         li.addEventListener('dragover', (e) => {
-            e.preventDefault();
+            if(window.userRole === 'admin'){
+                e.preventDefault();
+            }
         });
 
         li.addEventListener('drop', (e) => {
+            if(window.userRole !== 'admin') return;
             e.preventDefault();
 
             const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
@@ -723,6 +730,10 @@ window.updatePinsSidebar = function updatePinsSidebar() {
 
 
 window.togglePinEdit = function(){
+    if(window.userRole !== "admin"){
+        alert("Tryb podglądu - brak uprawnień do edycji pinezek.");
+        return;
+    }
     editPinsMode = !editPinsMode;
 
     customMarkers.forEach(m => {
