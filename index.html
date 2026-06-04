@@ -328,6 +328,7 @@
             <div class="toolbar">
                 <button id="btn-mode-pin" class="tool-btn active" onclick="setMode('pin')">📍 Pinezki</button>
                 <button id="btn-mode-line" class="tool-btn" onclick="setMode('line')">🟢 Linie</button>
+<button id="btn-edit-pins" class="tool-btn" onclick="togglePinEdit()">✋ Edycja</button>
             </div>
 
             <div class="sidebar-content">
@@ -377,6 +378,7 @@
             let allLines = [];
             let activeLineData = null;
             let db = null;
+            let editPinsMode = false;
 
     window.addEventListener("load", () => {
         if (window.firebaseDB) {
@@ -412,12 +414,22 @@
                         pin.lat,
                         pin.lng
                     ],{
-                        draggable:true,
+                        draggable:editPinsMode,
                         icon:gtaIcon
                     }).addTo(map);
 
                     marker.on('dragend', function(e){
                         const pos = e.target.getLatLng();
+
+                        const item = customMarkers.find(m => m.id === id);
+                        if(item){
+                            item.latlng = {
+                                lat: pos.lat,
+                                lng: pos.lng
+                            };
+                        }
+
+                        updatePinsSidebar();
 
                         if(db){
                             set(ref(db, "pins/" + id), {
@@ -605,31 +617,53 @@
 
     }
 
-            window.updatePinsSidebar = function updatePinsSidebar() {
-                const container = document.getElementById('pins-list');
-                container.innerHTML = '';
-                customMarkers.forEach(m => {
-                    const li = document.createElement('li');
-                    li.className = 'list-item';
-                    li.setAttribute('onclick', `focusOnMarker('${m.id}')`);
-                    li.innerHTML = `
-                        <div class="item-info">
-                            <span class="item-name">📍 ${m.name}</span>
-                            <span class="item-sub">X: ${Math.round(m.latlng.lng)}, Y: ${Math.round(m.latlng.lat)}</span>
-                        </div>
-                        <button class="delete-btn" onclick="removeMarker('${m.id}'); event.stopPropagation();">&times;</button>
-                    `;
-                    container.appendChild(li);
-                });
-            }
+            
+window.updatePinsSidebar = function updatePinsSidebar() {
+    const container = document.getElementById('pins-list');
+    container.innerHTML = '';
 
-            window.focusOnMarker = function(id) {
-                const m = customMarkers.find(item => item.id === id);
-                if (m) {
-                    map.setView(m.latlng, 0);
-                    m.markerInstance.openPopup();
-                }
-            };
+    customMarkers.forEach((m,index) => {
+        const li = document.createElement('li');
+        li.className = 'list-item';
+        li.draggable = true;
+        li.dataset.index = index;
+
+        li.innerHTML = `
+            <div class="item-info">
+                <span class="item-name">📍 ${m.name}</span>
+                <span class="item-sub">X: ${Math.round(m.latlng.lng)}, Y: ${Math.round(m.latlng.lat)}</span>
+            </div>
+            <button class="delete-btn" onclick="removeMarker('${m.id}'); event.stopPropagation();">&times;</button>
+        `;
+
+        li.onclick = () => focusOnMarker(m.id);
+
+        li.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', index);
+        });
+
+        li.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        li.addEventListener('drop', (e) => {
+            e.preventDefault();
+
+            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const toIndex = index;
+
+            if (fromIndex === toIndex) return;
+
+            const moved = customMarkers.splice(fromIndex, 1)[0];
+            customMarkers.splice(toIndex, 0, moved);
+
+            updatePinsSidebar();
+        });
+
+        container.appendChild(li);
+    });
+};
+
 
             window.removeMarker = function(id) {
 
@@ -672,6 +706,29 @@
         c.innerHTML = `X: ${Math.round(e.latlng.lng)} Y: ${Math.round(e.latlng.lat)}`;
     }
 });
+
+
+window.togglePinEdit = function(){
+    editPinsMode = !editPinsMode;
+
+    customMarkers.forEach(m => {
+        if(editPinsMode){
+            m.markerInstance.dragging.enable();
+        }else{
+            m.markerInstance.dragging.disable();
+        }
+    });
+
+    const btn = document.getElementById('btn-edit-pins');
+    if(btn){
+        btn.classList.toggle('active', editPinsMode);
+    }
+
+    alert(editPinsMode
+        ? 'Tryb edycji pinezek WŁĄCZONY'
+        : 'Tryb edycji pinezek WYŁĄCZONY');
+};
+
 
 window.removeLine = function(id) {
                 const index = allLines.findIndex(item => item.id === id);
