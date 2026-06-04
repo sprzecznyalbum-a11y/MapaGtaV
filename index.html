@@ -301,11 +301,16 @@
     </div>
 
     <script>
-    const REQUIRED_PASSWORD = "LSPDTOPKA12";
+    window.userRole = "viewer";
 
     function checkPassword(){
-    const entered = document.getElementById('site-password').value;
-    if(entered === REQUIRED_PASSWORD){
+    const entered = document.getElementById('site-password').value.trim();
+
+    if(entered === "LSPDTOPKA12"){
+        window.userRole = "viewer";
+        document.getElementById('password-overlay').style.display = 'none';
+    } else if(entered === "stopyrutka"){
+        window.userRole = "admin";
         document.getElementById('password-overlay').style.display = 'none';
     } else {
         document.getElementById('password-error').textContent = 'Nieprawidłowe hasło';
@@ -554,6 +559,10 @@
             // Obsługa kliknięć
             map.on('click', function(e) {
                 if (currentMode === 'pin') {
+                    if(window.userRole !== "admin"){
+                        alert("Tryb podglądu - brak uprawnień do dodawania pinezek.");
+                        return;
+                    }
                     const pinName = prompt("Wprowadź nazwę dla tego punktu:");
                     if (pinName && pinName.trim() !== "") {
                         addMarker(e.latlng, pinName.trim());
@@ -625,7 +634,7 @@ window.updatePinsSidebar = function updatePinsSidebar() {
     customMarkers.forEach((m,index) => {
         const li = document.createElement('li');
         li.className = 'list-item';
-        li.draggable = true;
+        li.draggable = (window.userRole === 'admin');
         li.dataset.index = index;
 
         li.innerHTML = `
@@ -666,6 +675,11 @@ window.updatePinsSidebar = function updatePinsSidebar() {
 
 
             window.removeMarker = function(id) {
+
+        if(window.userRole !== "admin"){
+            alert("Tryb podglądu - brak uprawnień do usuwania pinezek.");
+            return;
+        }
 
         if (db) {
             remove(ref(db, "pins/" + id));
