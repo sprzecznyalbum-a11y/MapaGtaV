@@ -519,13 +519,13 @@ window.addEventListener("load", () => {
             customMarkers.forEach(m => {
                 const li = document.createElement('li');
                 li.className = 'list-item';
-                li.setAttribute('onclick', `focusOnMarker(${m.id})`);
+                li.setAttribute('onclick', `focusOnMarker('${m.id}')`);
                 li.innerHTML = `
                     <div class="item-info">
                         <span class="item-name">📍 ${m.name}</span>
                         <span class="item-sub">X: ${Math.round(m.latlng.lng)}, Y: ${Math.round(m.latlng.lat)}</span>
                     </div>
-                    <button class="delete-btn" onclick="removeMarker(${m.id}); event.stopPropagation();">&times;</button>
+                    <button class="delete-btn" onclick="removeMarker('${m.id}'); event.stopPropagation();">&times;</button>
                 `;
                 container.appendChild(li);
             });
