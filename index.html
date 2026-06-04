@@ -244,6 +244,47 @@
 </head>
 <body>
 
+<style>
+#password-overlay{
+position:fixed;inset:0;background:#121314;z-index:999999;
+display:flex;align-items:center;justify-content:center;
+}
+#password-box{
+background:#1a1c1e;padding:30px;border:2px solid #37ef55;
+border-radius:10px;text-align:center;color:white;min-width:320px;
+}
+#password-box input{
+width:100%;padding:10px;margin:10px 0;box-sizing:border-box;
+}
+#password-box button{
+padding:10px 15px;cursor:pointer;
+}
+</style>
+
+<div id="password-overlay">
+  <div id="password-box">
+    <h2>Dostęp chroniony</h2>
+    <p>Wpisz hasło aby wejść na stronę</p>
+    <input type="password" id="site-password" placeholder="Hasło">
+    <button onclick="checkPassword()">Wejdź</button>
+    <p id="password-error" style="color:red;"></p>
+  </div>
+</div>
+
+<script>
+const REQUIRED_PASSWORD = "LSPDTOPKA12";
+
+function checkPassword(){
+  const entered = document.getElementById('site-password').value;
+  if(entered === REQUIRED_PASSWORD){
+    document.getElementById('password-overlay').style.display = 'none';
+  } else {
+    document.getElementById('password-error').textContent = 'Nieprawidłowe hasło';
+  }
+}
+</script>
+
+
 <div id="fallback-loader">
     <h2 style="color: var(--gta-green); margin-bottom: 10px;">Inicjalizacja GPS Los Santos...</h2>
     <p style="color: #aaa; max-width: 500px; font-size: 14px;">Wymagane połączenie z siecią do pobrania tekstur mapy.</p>
